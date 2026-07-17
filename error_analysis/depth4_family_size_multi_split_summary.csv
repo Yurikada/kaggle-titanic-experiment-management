@@ -1,0 +1,4 @@
+random_state,validation_accuracy,true0_pred0,true0_pred1,true1_pred0,true1_pred1,male_survivor_count,missed_male_survivor_count,captured_male_survivor_count,missed_male_survivor_rate
+42,0.7821229050279329,103,7,32,37,24,24,0,1.0
+7,0.8156424581005587,104,6,27,42,23,18,5,0.782608695652174
+2026,0.8156424581005587,98,12,21,48,25,20,5,0.8

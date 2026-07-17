@@ -1,0 +1,26 @@
+# Kaggle data should be downloaded locally, not committed.
+data/
+
+# Python cache and environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Editor settings
+.vscode/
+
+# Local/private experiment notes
+experiment_log.md
+
+# Row-level analysis outputs may contain competition data fields.
+error_analysis/*
+!error_analysis/depth4_age_split_missed_male_survivor_skew.csv
+!error_analysis/depth4_age_split_multi_split_summary.csv
+!error_analysis/depth4_family_size_multi_split_summary.csv
+!error_analysis/depth_5_6_7_family_size_by_depth.csv
+!error_analysis/depth_5_6_7_family_size_multi_split_summary.csv
+
+# Keep generated submissions for reproducibility of Kaggle submissions.
+!submissions/
