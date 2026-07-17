@@ -1,29 +1,87 @@
-# Kaggle Titanic: Experiment Management Case Study
+# Kaggle Titanic: 実験管理ケーススタディ / Experiment Management Case Study
 
-This repository is a learning-focused case study using the Kaggle Titanic competition.
+[日本語](#日本語) | [English](#english)
 
-The goal is not to present a high-ranking leaderboard solution. The goal is to show how a small machine-learning experiment can be managed, reviewed, and improved through:
+## 日本語
 
-- hypothesis-driven feature changes
-- validation split checks
-- model comparison
-- subgroup error analysis
-- failed-experiment review
-- reproducible submission generation
+### 概要
 
-Competition: <https://www.kaggle.com/competitions/titanic>
+このリポジトリは、KaggleのTitanicコンペを題材に、機械学習の実験をどのように設計・比較・検証したかをまとめた学習成果物です。
 
-## Why This Project Exists
+Leaderboard上位を目指した高性能モデルではありません。採用担当者・技術面接担当者に、次の取り組み方を確認していただくことを目的としています。
 
-This project treats Titanic as a compact practice environment for model evaluation and experiment management.
+- 仮説を立ててから特徴量を変更する
+- validation splitの偶然性を複数分割で確認する
+- モデル比較時の固定条件と変更条件を明示する
+- 全体精度だけでなく、属性別の誤判定を分析する
+- スコアが悪化した実験も残し、原因を分解する
+- 同じ条件でsubmissionを再生成できるようにする
 
-The key learning was that a plausible domain hypothesis can still reduce performance if the experiment changes too many factors at once or if feature aggregation discards useful information.
+コンペ: <https://www.kaggle.com/competitions/titanic>
 
-## Data
+### このケースで示したこと
 
-Kaggle competition data is not included in this repository.
+単純な決定木を出発点として、男性生存者の見逃しに着目し、複数のvalidation split、`FamilySize`特徴量、木の深さの比較を行いました。
 
-Download the data from Kaggle and place the files under:
+特に重要だった学びは、妥当に見える仮説でも、複数条件を同時に変更したり、特徴量を集約して情報を失ったりすると、性能が下がりうることです。そのため、良い実験とはスコアが上がった実験だけではなく、仮説、操作、結果、解釈を追跡できる実験だと考えています。
+
+### 主な結果
+
+#### ベースライン
+
+```text
+model: DecisionTreeClassifier(max_depth=3, random_state=42)
+features: Pclass, Sex, Age, SibSp, Parch, Fare, Embarked, CabinKnown
+validation: 80:20 stratified split
+validation accuracy: 0.7933
+Kaggle public score: 0.77990
+```
+
+#### 誤判定分析
+
+最初のvalidation splitでは、生存した男性24人を全員「非生存」と誤判定していました。ただし、分割を変えると結果は次のように変化しました。
+
+```text
+random_state  male_survivors  missed  captured  miss_rate
+42            24              24      0         1.0000
+7             23              18      5         0.7826
+2026          25              20      5         0.8000
+```
+
+ここから、次の2つを分けて解釈しました。
+
+- 「男性生存者を全員見逃した」は、特定splitに依存する
+- 「男性生存者を見逃しやすい」は、複数splitでも残る傾向である
+
+#### FamilySize仮説
+
+「家族のいる男性と、単独の男性では行動が異なるのではないか」という仮説から、`FamilySize = SibSp + Parch + 1`を導入しました。
+
+その後、`SibSp`と`Parch`を`FamilySize`へ置き換え、同時に`max_depth=5`へ変更した提出では、Public Scoreが`0.74162`まで低下しました。
+
+この結果は性能改善ではありません。一方で、次の問題を確認できた失敗実験として記録しています。
+
+- 特徴量の集約によって、個別の情報を失う可能性がある
+- 木を深くしても汎化性能が上がるとは限らない
+- 特徴量とモデル深度を同時に変えると、悪化原因を一つに絞れない
+
+### 実験上の学び
+
+#### 比較条件を固定する
+
+`max_depth`を比較するときは、特徴量、validation split、前処理、評価指標を固定します。特徴量を比較するときは、モデル深度とvalidation方法を固定します。
+
+#### 単一splitを過信しない
+
+データ数が少ない場合、1回のholdout評価は分割の影響を強く受けます。複数splitは、スコアを水増しするためではなく、観察した現象が特定分割だけのものかを確認するために使いました。
+
+#### 失敗実験も残す
+
+仮説どおりに改善しなかった場合も削除せず、何を変え、何が悪化し、どの条件が交絡したかを記録しました。
+
+### データについて
+
+Kaggleのコンペデータは、このリポジトリには含めていません。Kaggleから取得し、次のように配置してください。
 
 ```text
 data/
@@ -32,15 +90,15 @@ data/
   gender_submission.csv
 ```
 
-You can also use the Kaggle CLI:
+Kaggle CLIを使う場合:
 
 ```powershell
 kaggle competitions download -c titanic -p data
 ```
 
-Then unzip the downloaded archive into `data/`.
+ダウンロード後、ZIPファイルを`data/`へ展開してください。`data/`はGit管理対象外です。
 
-## Project Structure
+### ディレクトリ構成
 
 ```text
 .
@@ -59,152 +117,80 @@ Then unzip the downloaded archive into `data/`.
 └── README.md
 ```
 
-`data/` is intentionally ignored by Git.
+### 再現方法
 
-## Experiment Flow
-
-### 1. Baseline
-
-The first submitted model was a simple decision tree:
-
-```text
-model: DecisionTreeClassifier(max_depth=3, random_state=42)
-features: Pclass, Sex, Age, SibSp, Parch, Fare, Embarked, CabinKnown
-validation: 80:20 stratified split
-```
-
-Kaggle public score:
-
-```text
-0.77990
-```
-
-### 2. Error Analysis
-
-The local validation errors suggested that male survivors were often predicted as non-survivors.
-
-This led to a subgroup question:
-
-```text
-Are male survivors being missed because "male" dominates the tree,
-or are there additional attributes attached to the male survivors?
-```
-
-The analysis introduced:
-
-- missed survivor counts
-- male survivor miss rate
-- repeated validation splits
-- proportion difference
-- lift
-- odds ratio when comparison groups exist
-
-### 3. Multiple Validation Splits
-
-A single validation split produced an extreme result:
-
-```text
-random_state=42:
-male survivors: 24
-missed male survivors: 24
-captured male survivors: 0
-```
-
-After repeating the 80:20 stratified split three times:
-
-```text
-random_state  male_survivors  missed  captured  miss_rate
-42            24              24      0         1.0000
-7             23              18      5         0.7826
-2026          25              20      5         0.8000
-```
-
-This separated two claims:
-
-- Split-dependent: all male survivors were missed.
-- More stable: male survivors were difficult for this model to capture.
-
-### 4. FamilySize Hypothesis
-
-Hypothesis:
-
-```text
-Men with family and men without family may behave differently.
-```
-
-The project tested `FamilySize = SibSp + Parch + 1`.
-
-A later submission replaced `SibSp` and `Parch` with `FamilySize` and used `max_depth=5`.
-
-Kaggle public score:
-
-```text
-0.74162
-```
-
-This was worse than the baseline.
-
-## Main Lessons
-
-### Low Score Can Still Be a Good Case Study
-
-The depth-5 FamilySize replacement model was not a better model. It was a better learning case.
-
-It showed:
-
-- a plausible domain hypothesis can reduce performance
-- feature aggregation can discard useful separate information
-- deeper trees can overfit or fail to generalize
-- changing multiple factors at once makes failure analysis harder
-
-### Keep Experiment Conditions Explicit
-
-When comparing `max_depth`, keep the feature set fixed.
-
-When comparing features, keep the model depth and validation method fixed.
-
-Otherwise, the effect of each change becomes difficult to interpret.
-
-### Manual Experiment Tables Are Useful Early
-
-Before using MLflow or automated hyperparameter search, manually writing experiment tables helps clarify:
-
-- which parameters matter
-- which metrics matter
-- what should be logged automatically later
-
-## Reproduce
-
-Install dependencies:
+依存ライブラリをインストールします。
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-Run the baseline:
+ベースラインを実行します。
 
 ```powershell
 python 02_baseline.py
 ```
 
-Run the depth-5 FamilySize replacement submission:
+`FamilySize`置換版を実行します。
 
 ```powershell
 python 08_depth5_family_size_replaced_submission.py
 ```
 
-The generated submission file is written to:
+submissionは`submissions/`へ出力されます。
+
+### 位置づけ
+
+このリポジトリは、公開Notebookを模倣して高スコアを主張するものではありません。面接で、仮説、変更条件、検証結果、誤判定、失敗からの学びを自分の言葉で説明できることを重視したケーススタディです。
+
+---
+
+## English
+
+### Overview
+
+This repository is a learning-focused case study based on the Kaggle Titanic competition. Its purpose is not to present a top-ranking solution, but to demonstrate a traceable machine-learning experiment process:
+
+- hypothesis-driven feature changes
+- validation split checks
+- controlled model comparison
+- subgroup error analysis
+- failed-experiment review
+- reproducible submission generation
+
+Competition: <https://www.kaggle.com/competitions/titanic>
+
+### Baseline
 
 ```text
-submissions/decision_tree_depth5_family_size_replaced.csv
+model: DecisionTreeClassifier(max_depth=3, random_state=42)
+features: Pclass, Sex, Age, SibSp, Parch, Fare, Embarked, CabinKnown
+validation: 80:20 stratified split
+validation accuracy: 0.7933
+Kaggle public score: 0.77990
 ```
 
-## Notes
+The first split missed all 24 male survivors. Repeating the split showed that the all-missed result was split-dependent, while the broader difficulty in capturing male survivors remained.
 
-This repository intentionally avoids copying a high-scoring public notebook. The purpose is to demonstrate an experiment process that can be explained in an interview:
+### Failed Experiment
 
-- what was hypothesized
-- what was changed
-- what improved or failed
-- what was learned
-- what should be controlled in future experiments
+The project tested the hypothesis that men with and without family might behave differently by introducing `FamilySize = SibSp + Parch + 1`.
+
+A later submission replaced `SibSp` and `Parch` with `FamilySize` and changed the tree to `max_depth=5`. Its Kaggle public score fell to `0.74162`.
+
+This was not a performance improvement. It was retained because it demonstrated that:
+
+- feature aggregation can discard useful information
+- a deeper tree does not guarantee better generalization
+- changing features and model depth together makes causal interpretation difficult
+
+### Reproduce
+
+Kaggle data is not included. Place `train.csv`, `test.csv`, and `gender_submission.csv` under `data/`, then run:
+
+```powershell
+pip install -r requirements.txt
+python 02_baseline.py
+```
+
+This repository intentionally emphasizes explainable experiment management over leaderboard optimization.
