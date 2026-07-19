@@ -125,6 +125,15 @@ kaggle competitions download -c titanic -p data
 pip install -r requirements.txt
 ```
 
+Kaggleデータ未取得の環境でコードの疎通だけ確認する場合は、合成の小さなスモークテスト用データを生成できます。
+
+```powershell
+python scripts/generate_smoke_data.py
+python 02_baseline.py
+```
+
+この合成データはKaggleスコアや分析結果の再現には使いません。スクリプトが期待する列、前処理、submission生成が動くことだけを確認するためのものです。
+
 ベースラインを実行します。
 
 ```powershell
