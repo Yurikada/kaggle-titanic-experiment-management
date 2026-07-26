@@ -146,13 +146,28 @@ print(f"Python {platform.python_version()} | pandas {pd.__version__} | scikit-le
 
 code(
     r"""
-KAGGLE_DATA_DIR = Path("/kaggle/input/titanic")
+KAGGLE_INPUT_ROOT = Path("/kaggle/input")
 LOCAL_DATA_DIR = Path("data")
 
-if (KAGGLE_DATA_DIR / "train.csv").exists():
-    DATA_DIR = KAGGLE_DATA_DIR
+KAGGLE_DATA_DIRS = (
+    sorted(
+        train_path.parent
+        for train_path in KAGGLE_INPUT_ROOT.rglob("train.csv")
+        if (train_path.parent / "test.csv").exists()
+    )
+    if KAGGLE_INPUT_ROOT.exists()
+    else []
+)
+
+if len(KAGGLE_DATA_DIRS) == 1:
+    DATA_DIR = KAGGLE_DATA_DIRS[0]
     OUTPUT_DIR = Path("/kaggle/working")
     ENVIRONMENT = "Kaggle"
+elif len(KAGGLE_DATA_DIRS) > 1:
+    raise RuntimeError(
+        "Multiple train.csv/test.csv pairs were found under /kaggle/input. "
+        f"Keep only the Titanic competition input attached: {KAGGLE_DATA_DIRS}"
+    )
 elif (LOCAL_DATA_DIR / "train.csv").exists():
     DATA_DIR = LOCAL_DATA_DIR
     OUTPUT_DIR = Path("submissions")
@@ -173,6 +188,7 @@ data_mode = "official Titanic competition data" if is_official_shape else "non-o
 
 display(Markdown(
     f"**Environment / 実行環境:** `{ENVIRONMENT}`  \n"
+    f"**Data directory / 入力先:** `{DATA_DIR}`  \n"
     f"**Data mode / データ判定:** `{data_mode}`  \n"
     f"**Shapes / 形状:** train `{train.shape}`, test `{test.shape}`"
 ))
