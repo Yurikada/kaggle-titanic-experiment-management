@@ -1,0 +1,16 @@
+{
+  "id": "yosukeinada/titanic-experiment-audit-1-1-jp-en",
+  "title": "Titanic Experiment Audit: 1回1変更で原因を切り分ける | JP/EN",
+  "code_file": "titanic_explainable_bilingual_workflow.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "false",
+  "enable_gpu": "false",
+  "enable_internet": "false",
+  "competition_sources": [
+    "titanic"
+  ],
+  "dataset_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
