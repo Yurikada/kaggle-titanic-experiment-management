@@ -20,39 +20,36 @@ def code(source: str) -> None:
 
 md(
     r"""
-# 🚢 Titanic: Why a Plausible Feature Can Make a Model Worse
-## 仮説・失敗・再検証まで見せる Titanic 解説 Notebook
+# Titanic: スコア悪化の原因を1回1変更で切り分ける
+## Separating feature effects from model complexity | JP / EN
 
-> **日本語** — この Notebook の主役は最高スコアではなく、再現できる思考プロセスです。
-> **English** — The goal is not a magic score. It is a reproducible reasoning process.
+過去の提出では、決定木の深さと `FamilySize` の導入を同時に変更した。その結果、Public Score は
+**0.77990 から 0.74162へ低下した**。しかし、この比較からは、特徴量とモデル複雑度のどちらが
+悪化に寄与したのか分からない。
 
-**What you will learn / 学べること**
+そこで本Notebookでは、同じLogistic Regressionを用いて特徴表現だけを変更し、反復交差検証で
+差を確認する。高スコアモデルの提示ではなく、**比較条件を固定し、失敗から何を言えるかを
+限定するためのケーススタディ**である。
 
-1. 生存率の差を、分母つきの可視化で読む / Read survival patterns with denominators.
-2. 欠損処理を Pipeline の内側に置き、リークを防ぐ / Prevent leakage with pipelines.
-3. `FamilySize` 仮説を「他条件を固定」して検証する / Test a feature hypothesis under controlled conditions.
-4. 単一 holdout ではなく反復交差検証で不確実性を見る / Measure uncertainty with repeated CV.
-5. 全体精度だけでなく、サブグループの失敗を見る / Inspect subgroup errors, not accuracy alone.
-6. 投稿ファイルを検査してから保存する / Validate the submission before saving it.
+### English abstract
 
-**Navigation / 目次**
-[Goal](#1-goal--目的) · [Setup](#2-setup--環境設定) · [Data](#3-data--データ) ·
-[EDA](#4-eda--可視化) · [Modeling](#5-modeling--モデル) ·
-[Error Analysis](#6-error-analysis--誤分類分析) · [Submission](#7-submission--提出) ·
-[Takeaways](#8-takeaways--まとめ)
+An earlier submission changed both tree depth and `FamilySize`, so its lower public score could not identify the cause.
+This notebook holds logistic regression fixed, changes only the feature representation, and evaluates the difference
+with repeated cross-validation. It is an experiment audit rather than a claim of leaderboard superiority.
+
+**構成 / Contents:** 問題設定 → データ確認 → 観察 → 統制比較 → 誤分類分析 → 提出検査 → 結論と限界
 """
 )
 
 md(
     r"""
-## 1. Goal / 目的
+## 1. 問題設定 / Question
 
-Kaggle Titanic は小さな表形式データですが、良い実験設計の練習に向いています。ここでは次の問いに答えます。
+確認する問いは次の1点である。
 
-> **Does adding a plausible family feature improve out-of-sample accuracy?**
-> もっともらしい家族特徴量を追加すると、未知データへの精度は改善するのか？
+> `FamilySize`を含む家族特徴量は、モデルを固定した条件でも未知データへの精度を改善するか。
 
-### Experiment contract / 実験条件
+### 比較条件 / Experiment contract
 
 | Item | Decision |
 |---|---|
@@ -64,17 +61,17 @@ Kaggle Titanic は小さな表形式データですが、良い実験設計の�
 | Flexible model / 柔軟なモデル | Random forest on enhanced features |
 | Seed / 乱数 | 42 |
 
-**Important / 重要:** 観察データのため、可視化は相関を示します。性別・客室等が生存の「原因」だとは断定しません。
-*These are associations in observational data, not causal estimates.*
+可視化から確認できるのは観察上の関連であり、性別や客室等が生存の原因であるとは断定しない。
+The visual patterns are associations, not causal estimates.
 """
 )
 
 md(
     r"""
-## 2. Setup / 環境設定
+## 2. 実行環境 / Setup
 
-Kaggle では `/kaggle/input/titanic/`、ローカルでは `data/` を自動検出します。
-*The notebook auto-detects Kaggle and local paths.*
+Kaggleでは `/kaggle/input/titanic/`、ローカルでは `data/` を参照する。公式データと
+スモークデータを形状で区別し、非公式データの結果を公開用の数値として扱わない。
 """
 )
 
@@ -192,10 +189,10 @@ if not is_official_shape:
 
 md(
     r"""
-### Reproducibility checks / 再現性チェック
+### 2.1 入力を検査する / Validate inputs
 
-主キー、目的変数、列の一致を最初に検査します。ここで失敗する Notebook は、後段の美しいグラフも信用できません。
-*Schema and key checks come before attractive charts.*
+主キー、目的変数、列の一致を分析前に検査する。入力条件が崩れていれば、後段の図表も比較結果も
+信用できないためである。
 """
 )
 
@@ -231,9 +228,9 @@ display(quality_checks)
 
 md(
     r"""
-## 3. Data / データ
+## 3. データを確認する / Data
 
-### Compact data dictionary / 主要列
+### 3.1 主要列 / Compact data dictionary
 
 | Column | 日本語 | English |
 |---|---|---|
@@ -248,7 +245,7 @@ md(
 | `Survived` | 生存 (1) / 非生存 (0) | Outcome |
 
 Source: [Kaggle Titanic competition](https://www.kaggle.com/competitions/titanic/data)
-The test labels are hidden; all model comparisons below use only `train.csv`.
+テストデータの正解ラベルは非公開であるため、モデル比較には `train.csv` のみを用いる。
 """
 )
 
@@ -273,10 +270,9 @@ display(missing_display)
 
 md(
     r"""
-## 4. EDA / 可視化
+## 4. 観察から仮説を作る / Observation
 
-可視化では、色だけに頼らず、数値ラベル・並び順・同じスケールを併用します。
-*Charts use labels and ordering in addition to color.*
+可視化では比率だけでなく分母を併記する。小標本の高い比率を、安定した傾向と誤認しないためである。
 """
 )
 
@@ -307,10 +303,11 @@ plt.show()
 
 md(
     r"""
-**Interpretation / 読み方:** 欠損率が高い列を単純に削除するのではなく、「欠損そのものが情報か」を検討します。
-`Cabin` は文字列を直接使わず、まず `CabinKnown`（記録の有無）に圧縮します。`Age` は学習 fold 内の中央値で補完します。
+欠損率が高い列を単純に削除せず、欠損そのものが情報を持つ可能性を確認する。`Cabin`は
+文字列を直接使わず、まず`CabinKnown`（記録の有無）へ圧縮する。`Age`は学習fold内の
+中央値で補完し、検証データの情報が前処理へ混入しないようにする。
 
-*Missingness can carry information. We turn Cabin availability into a binary feature and impute Age inside each training fold.*
+*Missingness may carry information. Imputation is learned inside each training fold.*
 """
 )
 
@@ -364,8 +361,8 @@ display(class_rates_display)
 
 md(
     r"""
-**Interpretation / 読み方:** 棒の高さだけでなく `n=` を確認します。大きな率の差があっても、これは救命方針、客室位置、家族構成などが絡む観察結果です。
-*Always read the denominator. The gaps are descriptive associations with many intertwined factors.*
+棒の高さだけでなく`n=`を確認する。大きな率の差が見られても、救命方針、客室位置、
+家族構成などが交絡しているため、この図だけから因果関係は判断できない。
 """
 )
 
@@ -432,31 +429,32 @@ plt.show()
 
 md(
     r"""
-### Hypothesis / 仮説
+### 4.1 仮説 / Hypothesis
 
-家族人数と生存率の関係は非線形に見えます。しかし、可視化でパターンが見えたことと、未知データで精度が上がることは別です。
+家族人数と生存率の間には非線形な関係が見られる。しかし、学習データ上でパターンが見えたことと、
+未知データへの予測精度が改善することは別である。
 
 > **H1:** `FamilySize`, `IsAlone`, `Title`, `CabinKnown` add stable predictive signal.
 > **H0:** The apparent pattern is redundant, unstable, or too sparse to improve generalization.
 
-次節では、同じ Logistic Regression のまま特徴量だけを変える controlled ablation を行います。
-*We change the feature representation while holding the model fixed.*
+そこで、同じLogistic Regressionのまま特徴表現だけを変更する。ここで差が再現すれば、
+少なくとも「モデル複雑度を変えなくても家族特徴量が追加情報を持つ」という判断材料になる。
 """
 )
 
 md(
     r"""
-## 5. Modeling / モデル
+## 5. 条件を固定して比較する / Controlled experiment
 
-### Feature engineering without target leakage / 目的変数を使わない特徴量設計
+### 5.1 目的変数を使わない特徴量設計 / Feature engineering
 
 - `Title`: 氏名から敬称を抽出し、低頻度カテゴリを `Rare` に統合
 - `FamilySize`: `SibSp + Parch + 1`
 - `IsAlone`: `FamilySize == 1`
 - `CabinKnown`: 客室番号が記録されているか
 
-すべて `Survived` を参照せずに作成します。補完・標準化・one-hot は Pipeline 内で fold ごとに学習します。
-*All learned preprocessing stays inside the cross-validation pipeline.*
+すべて`Survived`を参照せずに作成する。補完・標準化・one-hot encodingはPipeline内に置き、
+各foldの学習データだけから推定する。
 """
 )
 
@@ -569,10 +567,10 @@ print(f"Repeated stratified CV: {n_splits} folds × 3 repeats = {n_splits * 3} v
 
 md(
     r"""
-### Repeated cross-validation / 反復交差検証
+### 5.2 反復交差検証 / Repeated cross-validation
 
-平均値だけでなく分布を見ます。小規模データでは、1 回の分割が結論を大きく変えるためです。
-*A score distribution is more informative than one lucky split.*
+平均値だけでなく、分割間の分布を確認する。小規模データでは、1回のholdoutが結論を
+大きく変えるためである。
 """
 )
 
@@ -679,44 +677,51 @@ best_model_name = (
     .iloc[0]["model"]
 )
 
-direction = "improved" if feature_delta > 0 else "did not improve"
-direction_ja = "改善した" if feature_delta > 0 else "改善しなかった"
+direction = "higher" if feature_delta > 0 else "lower or equal"
+direction_ja = "高かった" if feature_delta > 0 else "同等以下だった"
 
 display(Markdown(
-    f"### Controlled ablation result / 特徴量比較の結果\n"
+    f"### 特徴量比較の結果 / Controlled ablation result\n"
     f"- Logistic base mean accuracy: **{base_mean:.3f}**\n"
     f"- Logistic + family mean accuracy: **{family_mean:.3f}**\n"
     f"- Difference (family − base): **{feature_delta:+.3f}**\n\n"
-    f"Under the same logistic model, family features **{direction}** mean CV accuracy.  \n"
-    f"同じ Logistic Regression では、家族特徴量により平均 CV Accuracy は **{direction_ja}**。\n\n"
-    f"Selected non-dummy model for the next diagnostic step: **{best_model_name}**"
+    f"同じLogistic Regressionでは、家族特徴量を加えた平均CV Accuracyの方が**{direction_ja}**。"
+    f"ただし、この平均差だけでは安定した改善とは断定しない。  \n"
+    f"Under the same logistic model, family features produced a **{direction}** mean CV accuracy. "
+    f"The mean difference alone does not establish a stable improvement.\n\n"
+    f"誤分類診断に用いるモデル / Model used for diagnostics: **{best_model_name}**"
 ))
 """
 )
 
 md(
     r"""
-### Why this comparison is useful / なぜこの比較が重要か
+### 5.3 過去の失敗をどう読み直すか
 
-過去の試行では `FamilySize` 導入と木の深さ変更を同時に行い、Public Score が **0.77990 → 0.74162** に低下しました。
-その結果だけでは「特徴量が悪い」のか「深さが悪い」のか分離できません。
+過去の試行では`FamilySize`導入と木の深さ変更を同時に行い、Public Scoreが
+**0.77990 → 0.74162**に低下した。その結果だけでは、特徴量と深さのどちらが
+悪化に寄与したのか分離できない。
 
 | Tracked submission | Public score | Interpretation |
 |---|---:|---|
 | Depth-3 baseline | 0.77990 | Reference |
 | Depth-5 + FamilySize replacement | 0.74162 | Failed experiment; two factors changed |
 
-この Notebook では、まず同じモデルで特徴量だけを変えました。
-*The leaderboard scores above are historical submission records, not recomputed CV results. The controlled ablation here isolates feature representation.*
+本Notebookでは、同じモデルで特徴表現だけを変えた。したがって、ここで得られる差は
+過去のPublic Score低下を直接説明するものではないが、`FamilySize`だけを原因とみなす根拠が
+弱いことは確認できる。
+
+*The leaderboard scores are historical records. The controlled ablation isolates feature representation, but it does not reconstruct the old tree experiment.*
 """
 )
 
 md(
     r"""
-## 6. Error Analysis / 誤分類分析
+## 6. 全体精度の外側を見る / Error analysis
 
-モデル選択と性能推定に同じ CV を使うと、選択後の数値は少し楽観的になります。ここでは最終性能の断言ではなく、**失敗パターンの診断**に OOF prediction を使います。
-*OOF predictions below are diagnostic; nested CV would be needed for an unbiased post-selection estimate.*
+モデル選択と性能推定に同じCVを用いると、選択後の数値は楽観的になる。ここでは最終性能を
+断定するためではなく、**どのように誤るかを診断するため**にOOF predictionを用いる。
+選択後性能を不偏に推定するにはnested CVが必要である。
 """
 )
 
@@ -835,19 +840,20 @@ plt.show()
 
 md(
     r"""
-**Interpretation / 読み方:** `survivor_recall` は「実際に生存した人のうち、何割を生存と予測できたか」です。
-全体 Accuracy が同じでも、特定グループの見逃し方は異なり得ます。小標本の率は不安定なので、必ず `survivors` 列と一緒に読みます。
+`survivor_recall`は、実際に生存した人のうち生存と予測できた割合である。全体Accuracyが
+同じでも、グループごとに見逃し方は異なり得る。小標本の率は不安定であるため、
+必ず`survivors`列と併せて確認する。
 
-*Subgroup diagnostics reveal failure modes, but small denominators make rates unstable. This is not a fairness certification.*
+*This is a failure-mode diagnostic, not a fairness certification.*
 """
 )
 
 md(
     r"""
-### Permutation importance / 置換重要度
+### 6.1 置換重要度 / Permutation importance
 
-別 holdout 上で 1 列ずつランダムに崩し、Accuracy の低下を測ります。負値は「有限標本の揺れ」や冗長性で起こり得ます。
-*Permutation importance is model- and split-dependent; it is not causality.*
+別holdout上で1列ずつランダムに崩し、Accuracyの低下を測る。結果はモデルと分割に依存し、
+負値も有限標本の揺れや特徴量の冗長性によって生じる。因果効果としては解釈しない。
 """
 )
 
@@ -911,10 +917,10 @@ plt.show()
 
 md(
     r"""
-## 7. Submission / 提出
+## 7. 提出ファイルを検査する / Submission checks
 
-最終モデルを全学習データで fit し、`PassengerId` と 0/1 予測だけを保存します。
-*The competition test labels remain untouched.*
+最終モデルを全学習データでfitし、`PassengerId`と0/1予測だけを保存する。保存前に行数、
+ID順序、重複、欠損、予測値の範囲を検査する。
 """
 )
 
@@ -949,10 +955,10 @@ display(Markdown(
 
 md(
     r"""
-## 8. Takeaways / まとめ
+## 8. ここまでで確認できたこと / Conclusions
 
-このセルは実行結果から自動生成します。Notebook を fork して特徴量やモデルを変えても、文章と数値がずれにくい設計です。
-*The summary is generated from executed results so prose and numbers stay aligned.*
+以下の数値は実行結果から生成する。特徴量やモデルを変更した場合でも、本文の結論と出力値が
+ずれにくいようにするためである。
 """
 )
 
@@ -961,14 +967,14 @@ code(
 winner = cv_summary.iloc[0]
 spread = winner["accuracy_max"] - winner["accuracy_min"]
 ablation_message_ja = (
-    "家族特徴量は同一 Logistic モデルで平均精度を改善しました。"
+    "家族特徴量を加えた平均値の方が高かったものの、この差だけでは安定した改善とは断定できません。"
     if feature_delta > 0
-    else "家族特徴量は同一 Logistic モデルで平均精度を改善しませんでした。"
+    else "家族特徴量を加えた平均値は同等以下でした。"
 )
 ablation_message_en = (
-    "Family features improved mean accuracy under the same logistic model."
+    "Family features had a higher mean, but this difference alone does not establish a stable improvement."
     if feature_delta > 0
-    else "Family features did not improve mean accuracy under the same logistic model."
+    else "Family features had an equal or lower mean under the same logistic model."
 )
 
 official_note = (
@@ -1003,25 +1009,20 @@ display(Markdown(
 
 md(
     r"""
-### Limitations / 限界
+### 8.1 ここから先は言えない / Limitations
 
-- CV は leaderboard の完全な代替ではありません / CV is not the public leaderboard.
-- モデル選択後の OOF 指標は診断用です / Post-selection OOF metrics are diagnostic.
-- サブグループ率は小標本で不安定です / Small subgroup rates are unstable.
-- 置換重要度は因果効果ではありません / Importance is not causality.
-- Titanic は歴史的・倫理的にセンシティブな実データです / Treat the historical human data respectfully.
+- CVはleaderboardの完全な代替ではない。
+- モデル選択後のOOF指標は診断用であり、不偏な最終性能推定ではない。
+- サブグループ率は小標本で不安定である。
+- 置換重要度は因果効果を示さない。
+- Titanicは歴史的・倫理的にセンシティブな実データであり、属性差を人物評価へ一般化しない。
 
-### Next experiments / 次の実験
+### 8.2 次に行うなら / Next experiments
 
-1. `Title` だけ、`FamilySize` だけを 1 変更ずつ ablation。
-2. Nested CV でモデル選択バイアスを分離。
-3. Calibration curve と threshold sensitivity を追加。
-4. 同一 CV split を固定し、実験表に平均・標準偏差・差分を記録。
-
----
-
-If this notebook helped, please **upvote and comment with one experiment you would run next**.
-役に立ったら、**次に試したい実験をコメント**してください。
+1. `Title`だけ、`FamilySize`だけを1変更ずつablationする。
+2. Nested CVでモデル選択バイアスを分離する。
+3. Calibration curveとthreshold sensitivityを追加する。
+4. 同一CV splitを固定し、実験表に平均・標準偏差・差分を記録する。
 """
 )
 

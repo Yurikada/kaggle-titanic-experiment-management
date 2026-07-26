@@ -2,11 +2,11 @@
 
 ## Recommended Kaggle title
 
-**Titanic: Why a Plausible Feature Can Make a Model Worse | JP/EN**
+**Titanic: スコア悪化の原因を1回1変更で切り分ける | JP/EN**
 
 ## Short description
 
-An explainable bilingual Titanic workflow: denominator-aware EDA, leakage-safe pipelines, controlled feature ablation, repeated cross-validation, subgroup error analysis, permutation importance, and a validated submission.
+過去の提出で同時に変更した`FamilySize`とモデル複雑度を切り分ける、日本語中心の実験ケーススタディ。入力検査、リークを防ぐPipeline、反復交差検証、誤分類分析、提出検査までを再現可能にまとめています。
 
 ## Publication checklist
 
@@ -21,13 +21,15 @@ An explainable bilingual Titanic workflow: denominator-aware EDA, leakage-safe p
 9. Use the recommended title and short description above.
 10. Add tags: `beginner`, `classification`, `feature-engineering`, `cross-validation`, `data-visualization`, `japanese`.
 
-## Notebook Expert strategy
+## Writing and publication policy
 
-- Keep the first screen reader-focused: question, learning outcomes, navigation.
+- Keep Japanese as the primary narrative. Use English for the abstract, headings, and key result labels rather than translating every sentence.
+- Start from the failed comparison and the question it left unresolved.
+- Separate observation, controlled comparison, interpretation, and limitations.
 - Reply to comments with reproducible evidence and update the notebook when a reader finds an issue.
 - Publish follow-up versions that change one experimental factor at a time.
 - Do not claim leaderboard superiority; emphasize educational usefulness and transparent validation.
-- Share the notebook in relevant Kaggle discussions only when it directly answers the thread.
+- Do not add generic upvote requests or promotional calls to action.
 
 ## Local validation
 
