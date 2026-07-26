@@ -6,6 +6,7 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+.notebook_runtime/
 .ipynb_checkpoints/
 
 # Editor settings
@@ -24,3 +25,8 @@ error_analysis/*
 
 # Keep generated submissions for reproducibility of Kaggle submissions.
 !submissions/
+submissions/submission_smoke.csv
+
+# Agent loader bridges (contain local vault paths — never publish)
+/AGENTS.md
+/CLAUDE.md
