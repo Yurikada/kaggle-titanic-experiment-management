@@ -27,6 +27,15 @@ error_analysis/*
 !submissions/
 submissions/submission_smoke.csv
 
+# Notebook review renders and locally generated notebook outputs
+uncertainty_review/
+uncertainty_publish/outputs/
+preregistration_review/
+preregistration_publish/outputs/
+kaggle_output_prereg_v1/
+kaggle_output_prereg_v2/
+kaggle_output_prereg_v3/
+
 # Agent loader bridges (contain local vault paths — never publish)
 /AGENTS.md
 /CLAUDE.md
