@@ -1,0 +1,16 @@
+{
+  "id": "yosukeinada/titanic-uncertainty-and-error-structure-jp-en",
+  "title": "Titanic: 差と呼ぶ前に不確実性・欠損・誤りを見る | JP/EN",
+  "code_file": "titanic_uncertainty_and_error_structure.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "false",
+  "enable_internet": "false",
+  "competition_sources": [
+    "titanic"
+  ],
+  "dataset_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
