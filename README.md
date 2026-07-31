@@ -148,6 +148,81 @@ python 08_depth5_family_size_replaced_submission.py
 
 submissionは`submissions/`へ出力されます。
 
+### 原理から学ぶNotebook
+
+`titanic_first_principles_learning_journal.ipynb` は、精度よりも次を優先する学習記録です。
+
+- 可視化を見る前の予想
+- 特徴量を「現実の不完全な測定」として読む姿勢
+- 分母、欠損、95% Wilson区間、分布の確認
+- 多数派予測・単純ルール・Logistic Regressionの比較
+- 混同行列と誤分類行から作る次の問い
+- AIが代筆しない、実行者本人の反省・違和感・次の仮説の記入欄
+
+生成と全セル検証:
+
+```powershell
+python build_learning_notebook.py
+python validate_learning_notebook.py
+```
+
+公式データで検証した提出物は`submissions/submission_first_principles.csv`へ出力されます。
+公式サイズでない入力では、誤提出を避けるためファイル名に`smoke`が付きます。
+
+### 不確実性・欠損・誤りの構造を見るNotebook
+
+`uncertainty_publish/titanic_uncertainty_and_error_structure.ipynb` は、
+「棒グラフの高さが違うとき、どこからを差と呼べるか」を出発点にした日英併記の公開用Notebookです。
+可視化する対象を次の3つに絞っています。
+
+- 比率の不確実性: 群ごとのWilson信頼区間と、2群の差のブートストラップ分布
+- 欠損の構造: 欠損の共起、`Age`欠損行を落としたときに残る乗客の構成変化、欠損自体と生存率の関係
+- 誤りの偏り: 層別のOOF誤分類率、誤りの向き、決定木の予測確率の較正
+
+モデルと特徴量は`02_baseline.py`のdepth 3ベースラインをそのまま引き継ぎ、
+評価だけを単一splitから層化5-foldのOut-of-Fold予測へ変更しています。
+新しいモデル選択は行っていません。
+
+生成と全セル検証:
+
+```powershell
+python build_uncertainty_notebook.py
+python validate_uncertainty_notebook.py
+```
+
+ローカル実行の提出物は`uncertainty_publish/outputs/`へ出力され、`submissions/`とは分離しています。
+公開手順とチェックリストは`NOTEBOOK_PUBLISHING.md`にあります。
+
+### 判定の基準を先に決めるNotebook
+
+`preregistration_publish/titanic_preregistered_comparisons.ipynb` は、
+**採否の基準を結果を見る前に登録してから**4つの比較を実行した記録です。
+
+| 比較 | 変えた条件 | 結果 |
+|---|---|---|
+| `Cabin` の表現 | 落とす / 有無フラグ / デッキ | 現行維持 |
+| 家族による情報の漏れ | 通常分割 / グループ分割 | 上振れは検出、比較は歪んでいない |
+| `Age` の欠損処理 | 落とす / 全体中央値 / 群別中央値 / 中央値+フラグ | 現行維持 |
+| 木の深さ | 1〜10と制限なし | 深さ3 |
+
+4つとも「変更に足る根拠なし」で終わり、提出スコアも既存と同じ `0.77990` でした。
+その過程で、判定ルールの形が結論を反転させたこと、継続を決めた推定値が独立な観測で
+半減したこと、分解能以下の差に付けた順位が入れ替わったことが観測できています。
+
+対応するスクリプトは `09_cabin_representation_comparison.py` から
+`13_depth_selection.py` です。
+
+生成と全セル検証:
+
+```powershell
+python build_preregistration_notebook.py
+python validate_preregistration_notebook.py
+```
+
+検証スクリプトは、Notebookが出力する提出物が
+`submissions/decision_tree_depth3_baseline.csv` と同一であることも確認します。
+公開手順は `NOTEBOOK_PUBLISHING.md` にあります。
+
 ### 位置づけ
 
 このリポジトリは、公開Notebookを模倣して高スコアを主張するものではありません。面接で、仮説、変更条件、検証結果、誤判定、失敗からの学びを自分の言葉で説明できることを重視したケーススタディです。
