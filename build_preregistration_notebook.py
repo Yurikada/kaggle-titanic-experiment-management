@@ -1476,13 +1476,17 @@ md(
 
 code(
     """
-    PUBLIC_SCORE = 0.77990          # 外部観測値。submission 55117112
-    PUBLIC_ROWS_ESTIMATE = 209      # Public LB は test 418行の一部で計算される
+    PUBLIC_SCORE = 0.77990  # 外部観測値。submission 55117112
+    # 公開スコアは test 418行すべてで計算されている。
+    # 根拠: このコンペで得た3つのスコアがいずれも418分の整数になる。
+    #   0.77990 * 418 = 326、0.77751 * 418 = 325、0.74162 * 418 = 310
+    # 当初は「およそ半分の209行」と仮定していたが、それは確認していない推測だった。
+    PUBLIC_ROWS = len(test)
 
     cv_mean = depth_by_fold[str(BASELINE_DEPTH)].mean()
     leakage_component = judgement["mean"]
     gap = cv_mean - PUBLIC_SCORE
-    public_se = np.sqrt(PUBLIC_SCORE * (1 - PUBLIC_SCORE) / PUBLIC_ROWS_ESTIMATE)
+    public_se = np.sqrt(PUBLIC_SCORE * (1 - PUBLIC_SCORE) / PUBLIC_ROWS)
 
     figure, axis = plt.subplots(figsize=(8.6, 4.4))
     axis.bar(["cross-validation", "public score"], [cv_mean, PUBLIC_SCORE],
@@ -1491,7 +1495,7 @@ code(
                   fmt="none", ecolor=COLORS["ink"], elinewidth=2, capsize=8)
     axis.annotate(
         f"gap {gap:.4f}\\nmeasured leakage {leakage_component:.4f}\\n"
-        f"public-score SE about {public_se:.3f}",
+        f"public score SE {public_se:.3f} on {PUBLIC_ROWS} rows",
         xy=(0.5, (cv_mean + PUBLIC_SCORE) / 2), ha="center", fontsize=10, color=COLORS["ink"],
     )
     axis.set_ylim(0.70, 0.85)
@@ -1504,9 +1508,13 @@ code(
         f"- 交差検証 `{cv_mean:.4f}`、公開スコア `{PUBLIC_SCORE:.4f}`、差 `{gap:.4f}`。  \\n"
         f"- 8節で測った家族による上振れは `{leakage_component:.4f}` で、差の"
         f"約 {100 * leakage_component / gap:.0f}% にあたる。  \\n"
-        f"- 公開スコアは418行の一部（およそ{PUBLIC_ROWS_ESTIMATE}行）で計算される1回の観測で、"
-        f"標準誤差は約 `{public_se:.3f}`。**差は、この幅と同じ桁である。**  \\n"
-        "- したがって「公開スコアがCVより低い」こと自体は、過学習の証拠にならない。"
+        f"- 公開スコアは`{PUBLIC_ROWS}`行に対する1回の観測で、標準誤差は約 `{public_se:.3f}`。"
+        "**差は、この幅と同じ桁である。**  \\n"
+        "- したがって「公開スコアがCVより低い」こと自体は、過学習の証拠にならない。  \\n"
+        f"- 分母が`{PUBLIC_ROWS}`だと確かめたのは、得られたスコアがいずれも"
+        f"`{PUBLIC_ROWS}`分の整数になったためである。当初は半分程度と推測していたが、"
+        "それは確認していない仮定だった。3節で分母を先に固定したのと同じ手続きを、"
+        "公開スコアに対しては踏んでいなかった。"
     ))
     """
 )
@@ -1548,6 +1556,16 @@ md(
     - 木の `random_state` は42で固定です。同点分割の決着は平均されていません。
     - 深さの比較で使ったfoldは学習行が重複するため、独立した100標本として有意差検定には使えません。
     - 公開スコアは1回の観測です。この値で設計を変えると、リーダーボードへの適応になります。
+
+    ### このNotebookの後に起きたこと / What happened after this notebook
+
+    この記録の後、5つ目の比較として**モデル族**（決定木・ロジスティック回帰・ランダムフォレスト）を
+    同じ枠組みで実行しました。ランダムフォレストが決定木を 4.4 SE 上回り、**このNotebookで唯一
+    採用された変更**になりました。したがって11節の構成は、この記録の時点のものです。
+
+    その提出結果も併せて記録します。CVで `+0.0071` 上回った構成が、公開スコアでは `-0.0024`
+    でした。両者の差は公開スコアの標準誤差の内側で、**1回の観測では判定できない大きさ**です。
+    CVと公開スコアのどちらが正しいかを、この1提出から決めることはできません。
 
     ## 14. AI支援の範囲 / AI assistance
 
